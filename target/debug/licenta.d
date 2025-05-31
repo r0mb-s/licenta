@@ -1,0 +1,1 @@
+/home/alex/info/licenta/target/debug/licenta: /home/alex/info/licenta/src/assembler.rs /home/alex/info/licenta/src/ast.rs /home/alex/info/licenta/src/fsm.rs /home/alex/info/licenta/src/main.rs /home/alex/info/licenta/src/parser.rs /home/alex/info/licenta/src/symbol_table.rs /home/alex/info/licenta/src/token.rs /home/alex/info/licenta/src/tokenizer.rs

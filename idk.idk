@@ -1,0 +1,18 @@
+func x : a, b;
+a + 2;
+endfunc;
+
+func y;
+endfunc;
+
+
+call y;
+call x: a = 2, b =6;
+
+
+var a =7;
+var b = 8;
+if b+2; =< a;
+var d = 1;
+endif;
+a = a + d;
