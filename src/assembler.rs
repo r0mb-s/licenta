@@ -20,6 +20,8 @@ impl<'a> Assembler<'a> {
         Assembler {
             tree,
             symbol_table,
+            data_section: String::new(),
+            functions: Vec::new(),
             assembly: Vec::new(),
             label_counter: 0,
         }
