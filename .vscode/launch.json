@@ -19,7 +19,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["idk.idk"],
+            "args": ["sources/bubble.idk"],
             "cwd": "${workspaceFolder}"
         },
         {

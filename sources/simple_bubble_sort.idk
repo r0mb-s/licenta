@@ -1,0 +1,44 @@
+var a[10];
+var a_len = 10;
+var i;
+var j;
+var aux;
+
+a + 0 = 87;
+a + 1 = 103;
+a + 2 = 21;
+a + 3 = 16;
+a + 4 = 32;
+a + 5 = 76;
+a + 6 = 2;
+a + 7 = 13;
+a + 8 = 334;
+a + 9 = 9;
+
+i = 0;
+while i; < a_len - 1;
+    print a + i;
+    i = i + 1;
+endwhile;
+
+i = 0;
+while i; < a_len - 1;
+    j = i + 1;
+    while j; < a_len;
+        if a + i; > a + j;
+            aux = a + i;
+            a + i = a + j;
+            a + j = aux;
+        endif;
+        j = j + 1;
+    endwhile;
+    i = i + 1;
+endwhile;
+
+print 99999;
+
+i = 0;
+while i; < a_len;
+    print a + i;
+    i = i + 1;
+endwhile;

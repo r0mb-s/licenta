@@ -1,0 +1,9 @@
+var i = 1;
+var aux = 1;
+var max = 100;
+
+while i; < max;
+    print i;
+    i = i + aux;
+    aux = i - aux;
+endwhile;

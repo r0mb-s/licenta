@@ -30,10 +30,15 @@ impl FiniteStateMachine {
                 ((3, TokenType::BinaryOperator), 1),
                 ((3, TokenType::SemiColon), 99),
 
+                ((3, TokenType::AssignmentOperator), 6),
+                
+                ((2, TokenType::AssignmentOperator), 0),
+
                 // Assignations
                 ((0, TokenType::Var), 4),
                 ((4, TokenType::Variable), 5),
                 ((5, TokenType::AssignmentOperator), 6),
+                ((5, TokenType::SemiColon), 99),
                 ((6, TokenType::OpenBracket), 7),
                 ((6, TokenType::IntLiteral), 9),
                 ((6, TokenType::Variable), 9),
@@ -47,9 +52,15 @@ impl FiniteStateMachine {
                 ((9, TokenType::BinaryOperator), 7),
                 ((9, TokenType::SemiColon), 99),
 
+                ((5, TokenType::OpenArray), 32),
+                ((32, TokenType::IntLiteral), 33),
+                ((33, TokenType::CloseArray), 34),
+                ((34, TokenType::SemiColon), 99),
+
                 // If / While
                 ((0, TokenType::If), 10),
                 ((0, TokenType::While), 10),
+                //
                 ((10, TokenType::OpenBracket), 11),
                 ((10, TokenType::IntLiteral), 13),
                 ((10, TokenType::Variable), 13),
@@ -59,10 +70,16 @@ impl FiniteStateMachine {
                 ((12, TokenType::CloseBracket), 13),
                 ((12, TokenType::BinaryOperator), 11),
                 ((12, TokenType::SemiColon), 14),
+                ((12, TokenType::OpenArray), 10),
                 ((13, TokenType::CloseBracket), 13),
                 ((13, TokenType::BinaryOperator), 11),
                 ((13, TokenType::SemiColon), 14),
+                ((13, TokenType::OpenArray), 10),
+                //
+                ((14, TokenType::CloseArray), 14),
+                ((14, TokenType::SemiColon), 14),
                 ((14, TokenType::ComparisonOperator), 15),
+                //
                 ((15, TokenType::OpenBracket), 16),
                 ((15, TokenType::IntLiteral), 18),
                 ((15, TokenType::Variable), 18),
@@ -72,9 +89,14 @@ impl FiniteStateMachine {
                 ((17, TokenType::CloseBracket), 18),
                 ((17, TokenType::BinaryOperator), 16),
                 ((17, TokenType::SemiColon), 99),
+                ((17, TokenType::OpenArray), 15),
                 ((18, TokenType::CloseBracket), 18),
                 ((18, TokenType::BinaryOperator), 16),
                 ((18, TokenType::SemiColon), 99),
+                ((18, TokenType::OpenArray), 15),
+                //
+                ((99, TokenType::CloseArray), 99),
+                ((99, TokenType::SemiColon), 99),
 
                 // Call function
                 ((0, TokenType::Call), 19),
@@ -105,8 +127,18 @@ impl FiniteStateMachine {
 
                 // Print
                 ((0, TokenType::Print), 30),
-                ((30, TokenType::Variable), 31),
-                ((31, TokenType::SemiColon), 99),
+                ((30, TokenType::OpenBracket), 36),
+                ((30, TokenType::IntLiteral), 38),
+                ((30, TokenType::Variable), 38),
+                ((36, TokenType::OpenBracket), 36),
+                ((36, TokenType::IntLiteral), 37),
+                ((36, TokenType::Variable), 37),
+                ((37, TokenType::CloseBracket), 38),
+                ((37, TokenType::BinaryOperator), 36),
+                ((37, TokenType::SemiColon), 99),
+                ((38, TokenType::CloseBracket), 38),
+                ((38, TokenType::BinaryOperator), 36),
+                ((38, TokenType::SemiColon), 99),
             ]),
             final_states: HashSet::from([99]),
         }

@@ -1,0 +1,18 @@
+var b = 743;
+var i = 2;
+var prime = 1;
+var not_prime = 0;
+
+while i; < b;
+    if b % i; == 0;
+        i = b + 1;
+    endif;
+    i = i + 1;
+endwhile;
+
+if i; == b + 2;
+    print not_prime;
+endif;
+if i; == b;
+    print prime;
+endif;

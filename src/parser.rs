@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::env::var;
 use std::iter::Peekable;
 use std::u8;
 use std::vec::IntoIter;
@@ -51,6 +52,8 @@ impl<'a> Parser<'a> {
                     return Parser::parse_func_call(&segment);
                 } else if segment[0].ttype == TokenType::Print {
                     return Parser::parse_print(self, &segment);
+                } else if segment[0].ttype == TokenType::Variable {
+                    return Parser::parse_assignment(self, &segment);
                 }
             }
         }
@@ -59,14 +62,100 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_assignment(&mut self, segment: &Vec<Token>) -> ASTNode {
-        if let Some(var_name) = &segment[1].value {
-            if segment[2].ttype == TokenType::AssignmentOperator {
-                self.symbol_table.add_to_table(var_name.to_string().clone());
-                let aux: ASTNode = ASTNode::Assignment {
-                    var_name: var_name.to_string(),
-                    expr: Box::new(Self::parse_expression(self, &segment[3..].to_vec())),
-                };
-                return aux;
+        if segment[0].ttype == TokenType::Var {
+            if let Some(var_name) = &segment[1].value {
+                if segment.len() > 2 {
+                    if segment[2].ttype == TokenType::OpenArray {
+                        let mut end: usize = 0;
+                        for tk in segment {
+                            end += 1;
+                            if tk.ttype == TokenType::CloseArray {
+                                break;
+                            }
+                        }
+
+                        // let aux: ASTNode = ASTNode::Array {
+                        //     arr_name: var_name.to_string(),
+                        //     index: Box::new(Self::parse_expression(
+                        //         self,
+                        //         &segment[3..end].to_vec(),
+                        //     )),
+                        // };
+
+                        let aux2: ASTNode = ASTNode::ArrayDeclaration {
+                            arr_name: var_name.to_string(),
+                            size: Box::new(Self::parse_expression(self, &segment[3..end].to_vec())),
+                        };
+
+                        if let ASTNode::ArrayDeclaration { arr_name: _, size } = aux2.clone() {
+                            match *size {
+                                ASTNode::Literal(val) => self.symbol_table.add_to_table(var_name.to_string().clone(), "arr".to_string(), val.parse().unwrap()),
+                                ASTNode::Variable(var) => print!(""),
+                                _ => println!("Index is another type of ASTNode"),
+                            }
+                        }
+
+                        
+
+                        return aux2;
+                    } else if segment[2].ttype == TokenType::AssignmentOperator {
+                        self.symbol_table
+                            .add_to_table(var_name.to_string().clone(), "int".to_string(), 0);
+                        let aux: ASTNode = ASTNode::Assignment {
+                            var_name: var_name.to_string(),
+                            expr: Box::new(Self::parse_expression(self, &segment[3..].to_vec())),
+                        };
+                        return aux;
+                    }
+                } else if segment.len() == 2 {
+                    self.symbol_table
+                        .add_to_table(var_name.to_string().clone(), "int".to_string(), 0);
+                    let aux: ASTNode = ASTNode::Assignment {
+                        var_name: var_name.to_string(),
+                        expr: Box::new(ASTNode::Literal("0".to_string())),
+                    };
+                    return aux;
+                }
+            }
+        } else {
+            if let Some(var_name) = &segment[0].value {
+                if segment[1].ttype == TokenType::AssignmentOperator {
+                    let aux: ASTNode = ASTNode::Assignment {
+                        var_name: var_name.to_string(),
+                        expr: Box::new(Self::parse_expression(self, &segment[2..].to_vec())),
+                    };
+                    return aux;
+                }
+
+                let mut eq_index = -1;
+                for tok in 0..segment.len() {
+                    if segment[tok].ttype == TokenType::AssignmentOperator {
+                        eq_index = tok as i32;
+                        break;
+                    }
+                }
+
+                if eq_index != -1 {
+                    // let aux: ASTNode = ASTNode::Assignment {
+                    //     var_name: Box::new(ASTNode::Array {
+                    //         arr_name: var_name.to_string(),
+                    //         index: Box::new(Self::parse_expression(
+                    //             self,
+                    //             &segment[2..eq_index as usize].to_vec(),
+                    //         )),
+                    //     }),
+                    //     expr: Box::new(Self::parse_expression(
+                    //         self,
+                    //         &segment[eq_index as usize + 1..].to_vec(),
+                    //     )),
+                    // };
+                    let aux: ASTNode = ASTNode::ArrayAssignment {
+                        arr_name: var_name.to_string(),
+                        position: Box::new(Self::parse_expression(self, &segment[2..eq_index as usize].to_vec())),
+                        value: Box::new(Self::parse_expression(self, &segment[eq_index as usize + 1..].to_vec(),))
+                    };
+                    return aux;
+                }
             }
         }
 
@@ -101,6 +190,7 @@ impl<'a> Parser<'a> {
             first_half: left_ast,
             comparison_op: segment[comp_op_index].value.clone().unwrap(),
             second_half: right_ast,
+            content: Vec::new(),
         }
     }
 
@@ -119,10 +209,12 @@ impl<'a> Parser<'a> {
 
         let left_ast: Box<ASTNode> = Box::new(Self::parse_expression(self, left_part));
         if *left_ast == ASTNode::Error {
+            println!("CCCCCCCCCCCCCCCCCCCCCCCCCC");
             return ASTNode::Error;
         }
         let right_ast: Box<ASTNode> = Box::new(Self::parse_expression(self, right_part));
         if *right_ast == ASTNode::Error {
+            println!("DDDDDDDDDDDDDDDDDDDDDDDDDDD");
             return ASTNode::Error;
         }
 
@@ -132,46 +224,103 @@ impl<'a> Parser<'a> {
             first_half: left_ast,
             comparison_op: segment[comp_op_index].value.clone().unwrap(),
             second_half: right_ast,
+            content: Vec::new(),
         }
     }
 
+    //
+
     fn parse_expression(&mut self, segment: &Vec<Token>) -> ASTNode {
         let rpn_tokens: Vec<Token> = Parser::convert_to_rpn(&segment);
+        println!("RPN: {:?}", rpn_tokens);
         let mut intermediate_stack: Vec<ASTNode> = vec![];
 
-        for token in rpn_tokens {
-            if token.ttype == TokenType::IntLiteral {
-                intermediate_stack.push(ASTNode::Literal(
-                    token.value.expect("Somethin wrong with token!"),
-                ));
-            } else if token.ttype == TokenType::Variable {
-                if !self.symbol_table.check_table(token.value.clone().unwrap()) {
-                    return ASTNode::Error;
+        let mut i = 0;
+        while i < rpn_tokens.len() {
+            let token = &rpn_tokens[i];
+
+            match token.ttype {
+                TokenType::IntLiteral => {
+                    intermediate_stack.push(ASTNode::Literal(
+                        token.value.clone().expect("Missing literal value"),
+                    ));
+                    i += 1;
                 }
-                intermediate_stack.push(ASTNode::Variable(
-                    token.value.expect("Somethin wrong with token!"),
-                ));
-            } else if token.ttype == TokenType::BinaryOperator {
-                if let (Some(right), Some(left)) =
-                    (intermediate_stack.pop(), intermediate_stack.pop())
-                {
-                    let aux: ASTNode = ASTNode::BinaryOperation {
-                        op: token.value.expect("Wrong with token!"),
-                        left: Box::new(left.clone()),
-                        right: Box::new(right.clone()),
-                    };
-                    intermediate_stack.push(aux);
-                } else {
-                    return ASTNode::Error;
+                TokenType::Variable => {
+                    let var_name = token.value.clone().expect("Missing variable name");
+                    if let Some(symb) = self.symbol_table.check_table(var_name.clone()) {
+                        if symb.vtype == "int" {
+                            intermediate_stack.push(ASTNode::Variable(var_name.clone()));
+                        } else if symb.vtype == "arr" {
+                            return ASTNode::Array {
+                                arr_name: symb.vname.clone(),
+                                index: Box::new(Self::parse_expression(
+                                    self,
+                                    &segment[2..].to_vec(),
+                                )),
+                            };
+                        }
+                    }
+                    i += 1;
+
+                    // Check if next token is OpenArray
+                    // if i + 1 < rpn_tokens.len() && rpn_tokens[i + 1].ttype == TokenType::OpenArray {
+                    //     // Find matching CloseArray
+                    //     let mut depth = 1;
+                    //     let mut j = i + 2;
+
+                    //     while j < rpn_tokens.len() && depth > 0 {
+                    //         match rpn_tokens[j].ttype {
+                    //             TokenType::OpenArray => depth += 1,
+                    //             TokenType::CloseArray => depth -= 1,
+                    //             _ => {}
+                    //         }
+                    //         j += 1;
+                    //     }
+
+                    //     if depth != 0 {
+                    //         return ASTNode::Error; // Mismatched brackets
+                    //     }
+
+                    //     let index_tokens = &rpn_tokens[i + 2..j - 1];
+                    //     let index_expr = self.parse_expression(&index_tokens.to_vec());
+
+                    //     intermediate_stack.push(ASTNode::Array {
+                    //         arr_name: var_name,
+                    //         index: Box::new(index_expr),
+                    //     });
+
+                    //     i = j; // move past ]
+                    // } else {
+                    //     intermediate_stack.push(ASTNode::Variable(var_name));
+                    //     i += 1;
+                    // }
+                }
+                TokenType::BinaryOperator => {
+                    if let (Some(right), Some(left)) =
+                        (intermediate_stack.pop(), intermediate_stack.pop())
+                    {
+                        let aux = ASTNode::BinaryOperation {
+                            op: token.value.clone().expect("Missing operator value"),
+                            left: Box::new(left),
+                            right: Box::new(right),
+                        };
+                        intermediate_stack.push(aux);
+                    } else {
+                        return ASTNode::Error;
+                    }
+                    i += 1;
+                }
+                _ => {
+                    return ASTNode::Error; // Unexpected token
                 }
             }
         }
 
         if intermediate_stack.len() != 1 {
-            return ASTNode::Error;
+            ASTNode::Error
         } else {
-            let aux: ASTNode = intermediate_stack.pop().expect("Shouldn't be empty!");
-            return aux;
+            intermediate_stack.pop().unwrap()
         }
     }
 
@@ -301,8 +450,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_print(&mut self, segment: &Vec<Token>) -> ASTNode {
-        if segment.len() == 2 {
-            return ASTNode::Print(segment[1].value.clone().unwrap());
+        if segment.len() >= 2 {
+            return ASTNode::Print(Box::new(Self::parse_expression(
+                self,
+                &segment[1..].to_vec(),
+            )));
         }
 
         ASTNode::Error

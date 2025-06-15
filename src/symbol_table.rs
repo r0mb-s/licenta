@@ -1,7 +1,10 @@
-#[derive(Debug)]
+use std::array;
+
+#[derive(Debug, Clone)]
 pub struct SymbolTableEntry {
     pub vname: String,
-    vtype: String,
+    pub vtype: String,
+    pub array_size: u32,
     level: u32,
 }
 
@@ -19,11 +22,12 @@ impl SymbolTable {
         }
     }
 
-    pub fn add_to_table(&mut self, var: String) {
+    pub fn add_to_table(&mut self, var: String, var_type: String, array_size: u32) {
         self.table.push(SymbolTableEntry {
             vname: var,
-            vtype: "int".to_string(),
+            vtype: var_type,
             level: self.curr_level,
+            array_size: array_size,
         });
     }
 
@@ -39,15 +43,13 @@ impl SymbolTable {
         self.curr_level += 1;
     }
 
-    pub fn check_table(&self, var: String) -> bool {
-        let mut found: bool = false;
+    pub fn check_table(&self, var: String) -> Option<&SymbolTableEntry> {
         for symbol in &self.table {
-            if symbol.vname == var && symbol.level == self.curr_level {
-                found = true;
-                break;
+            if symbol.vname == var && symbol.level <= self.curr_level {
+                return Some(symbol);
             }
         }
-        found
+        None
     }
 
     pub fn print_table(&mut self) {

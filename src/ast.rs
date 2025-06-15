@@ -6,6 +6,15 @@ pub enum ASTNode {
         var_name: String,
         expr: Box<ASTNode>,
     },
+    ArrayDeclaration {
+        arr_name: String,
+        size: Box<ASTNode>,
+    },
+    ArrayAssignment {
+        arr_name: String,
+        position: Box<ASTNode>,
+        value: Box<ASTNode>,
+    },
     BinaryOperation {
         op: String,
         left: Box<ASTNode>,
@@ -15,12 +24,14 @@ pub enum ASTNode {
         first_half: Box<ASTNode>,
         comparison_op: String,
         second_half: Box<ASTNode>,
+        content: Vec<Box<ASTNode>>,
     },
     EndIf,
     WhileOperation {
         first_half: Box<ASTNode>,
         comparison_op: String,
         second_half: Box<ASTNode>,
+        content: Vec<Box<ASTNode>>,
     },
     EndWhile,
     FunctionDef {
@@ -32,6 +43,10 @@ pub enum ASTNode {
         name: String,
         parameters: Option<Vec<(String, String)>>,
     },
+    Array {
+        arr_name: String,
+        index: Box<ASTNode>,
+    },
     Print(Box<ASTNode>),
     Literal(String),
     Variable(String),
@@ -42,7 +57,7 @@ pub enum ASTNode {
 
 #[derive(Debug)]
 pub struct AST {
-    nodes: Vec<ASTNode>,
+    pub nodes: Vec<ASTNode>,
 }
 
 impl AST {
@@ -62,90 +77,104 @@ impl AST {
         self.nodes.clone()
     }
 
-    pub fn print_nodes(&self) {
-        for node in &self.nodes {
-            Self::print_node(node);
+    pub fn transform_ast(&mut self){
+        let mut new_nodes = Vec::new();
+        let mut iter = self.nodes.clone().into_iter();
+
+        while let Some(node) = iter.next() {
+            match node {
+                ASTNode::WhileOperation { first_half, comparison_op, second_half, .. } => {
+                    let mut content = Vec::new();
+
+                    while let Some(next_node) = iter.next() {
+                        match next_node {
+                            ASTNode::EndWhile => break,
+                            _ => content.push(Box::new(next_node)),
+                        }
+                    }
+
+                    new_nodes.push(ASTNode::WhileOperation { first_half, comparison_op, second_half, content });
+                }
+                ASTNode::IfOperation { first_half, comparison_op, second_half, .. } => {
+                    let mut content = Vec::new();
+
+                    while let Some(next_node) = iter.next() {
+                        match next_node {
+                            ASTNode::EndIf => break,
+                            _ => content.push(Box::new(next_node)),
+                        }
+                    }
+
+                    new_nodes.push(ASTNode::IfOperation { first_half, comparison_op, second_half, content });
+                }
+                other => new_nodes.push(other),
+            }
         }
+        self.nodes = new_nodes;
     }
-    pub fn print_node(node: &ASTNode) {
-        match node {
-            ASTNode::BinaryOperation { op, left, right } => {
-                println!("Binary Operation: {}", op,);
-                Self::print_node(left);
-                Self::print_node(right);
-            }
-            ASTNode::IfOperation {
-                first_half,
-                comparison_op,
-                second_half,
-            } => {
-                println!("It's and If");
-                Self::print_node(first_half);
-                println!("Operator: {} ", comparison_op,);
-                Self::print_node(second_half);
-            }
-            ASTNode::WhileOperation {
-                first_half,
-                comparison_op,
-                second_half,
-            } => {
-                println!(
-                    "It's a while: {:?} {} {:?}",
-                    first_half, comparison_op, second_half
-                );
-            }
-            ASTNode::Assignment { var_name, expr } => {
-                println!("It's an Assignment: {}", var_name);
-                Self::print_node(expr)
-            }
-            ASTNode::Literal(value) => {
-                println!("It's a Literal: {}", value);
-            }
-            ASTNode::Variable(var_name) => {
-                println!("It's a Variable: {}", var_name);
-            }
-            ASTNode::Start => {
-                println!("It's a Start node");
-            }
-            ASTNode::End => {
-                println!("It's an End node");
-            }
-            ASTNode::Error => {
-                println!("It's an Error node");
-            }
-            ASTNode::EndIf => {
-                println!("It's an EndIf node");
-            }
-            ASTNode::EndWhile => {
-                println!("It's an EndWhile node");
-            }
-            ASTNode::FunctionDef { name, parameters } => {
-                println!("It's a function with the name \'{}\'", name);
-                print!("With parameters:");
-                if let Some(params) = &parameters {
-                    for param in params {
-                        print!(" {},", param);
+
+     pub fn bttr_transform_ast(&mut self) {
+        fn collect_block<I>(iter: &mut I, end_marker: ASTNode) -> Vec<Box<ASTNode>>
+        where
+            I: Iterator<Item = ASTNode>,
+        {
+            let mut content = Vec::new();
+
+            while let Some(node) = iter.next() {
+                match node {
+                    ASTNode::IfOperation { first_half, comparison_op, second_half, .. } => {
+                        let nested_content = collect_block(iter, ASTNode::EndIf);
+                        content.push(Box::new(ASTNode::IfOperation {
+                            first_half,
+                            comparison_op,
+                            second_half,
+                            content: nested_content,
+                        }));
                     }
-                }
-                println!();
-            }
-            ASTNode::EndFunctionDef => {
-                println!("It's an EndFunctionDef node");
-            }
-            ASTNode::FuntionCall { name, parameters } => {
-                println!("It's a call function with the name \'{}\'", name);
-                print!("With parameters:");
-                if let Some(params) = &parameters {
-                    for param in params {
-                        print!(" {} = {},", param.0, param.1);
+                    ASTNode::WhileOperation { first_half, comparison_op, second_half, .. } => {
+                        let nested_content = collect_block(iter, ASTNode::EndWhile);
+                        content.push(Box::new(ASTNode::WhileOperation {
+                            first_half,
+                            comparison_op,
+                            second_half,
+                            content: nested_content,
+                        }));
                     }
+                    node if node == end_marker => break,
+                    other => content.push(Box::new(other)),
                 }
-                println!();
             }
-            ASTNode::Print(astnode) => {
-                println!("It's a print node");
-                Self::print_node(astnode);
-            },
+
+            content
         }
+
+        let mut new_nodes = Vec::new();
+        let mut iter = self.nodes.clone().into_iter();
+
+        while let Some(node) = iter.next() {
+            match node {
+                ASTNode::IfOperation { first_half, comparison_op, second_half, .. } => {
+                    let content = collect_block(&mut iter, ASTNode::EndIf);
+                    new_nodes.push(ASTNode::IfOperation {
+                        first_half,
+                        comparison_op,
+                        second_half,
+                        content,
+                    });
+                }
+                ASTNode::WhileOperation { first_half, comparison_op, second_half, .. } => {
+                    let content = collect_block(&mut iter, ASTNode::EndWhile);
+                    new_nodes.push(ASTNode::WhileOperation {
+                        first_half,
+                        comparison_op,
+                        second_half,
+                        content,
+                    });
+                }
+                other => new_nodes.push(other),
+            }
+        }
+
+        self.nodes = new_nodes;
     }
 }

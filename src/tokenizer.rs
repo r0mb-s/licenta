@@ -24,8 +24,9 @@ impl<'a> Tokenizer<'a> {
     pub fn get_next_token(&mut self) -> Option<Token> {
         let mut idk: String = Default::default();
 
-        let stop_chars: Vec<char> =
-            vec![';', '(', ')', '=', '+', '-', '*', '/', '^', '<', '>', '!', ',', ':'];
+        let stop_chars: Vec<char> = vec![
+            ';', '(', ')', '=', '+', '-', '*', '/', '%', '^', '<', '>', '!', ',', ':', '[', ']',
+        ];
 
         while let Some(ch) = self.iterator.peek() {
             if (*ch).is_whitespace() || stop_chars.contains(ch) {
@@ -48,10 +49,13 @@ impl<'a> Tokenizer<'a> {
                     ':' => (TokenType::Colon, Some(':'.to_string())),
                     '(' => (TokenType::OpenBracket, Some('('.to_string())),
                     ')' => (TokenType::CloseBracket, Some(')'.to_string())),
-                    '+' | '-' | '*' | '/' | '^' => {
+                    '[' => (TokenType::OpenArray, Some('['.to_string())),
+                    ']' => (TokenType::CloseArray, Some(']'.to_string())),
+                    '+' | '-' | '*' | '/' | '%' | '^' => {
                         (TokenType::BinaryOperator, Some(character.to_string()))
                     }
                     '<' | '>' => (TokenType::ComparisonOperator, Some(character.to_string())),
+                    '!' => (TokenType::NegationOperator, Some('!'.to_string())),
                     '=' => (TokenType::AssignmentOperator, Some('='.to_string())),
                     _ => (TokenType::Error, None),
                 };
@@ -77,7 +81,7 @@ impl<'a> Tokenizer<'a> {
             };
 
             if ttype == TokenType::Error {
-                if idk.as_str().parse::<u8>().is_ok() {
+                if idk.as_str().parse::<u32>().is_ok() {
                     ttype = TokenType::IntLiteral;
                     tvalue = Some(idk.clone());
                 } else {
@@ -91,14 +95,40 @@ impl<'a> Tokenizer<'a> {
             return None;
         }
     }
+    // pub fn fix_comparison_operators(tokens: &mut Vec<Token>) {
+    //     for index in 0..tokens.len() - 1 {
+    //         if tokens[index].ttype == TokenType::AssignmentOperator {
+    //             if index + 1 < tokens.len()
+    //                 && (tokens[index + 1].ttype == TokenType::ComparisonOperator
+    //                     || tokens[index + 1].ttype == TokenType::AssignmentOperator)
+    //             {
+    //                 let mut aux: String = String::new();
+
+    //                 if let Some(val) = tokens[index].value.as_ref() {
+    //                     aux.push_str(val);
+    //                 }
+    //                 if let Some(val) = tokens[index + 1].value.as_ref() {
+    //                     aux.push_str(val);
+    //                 }
+
+    //                 tokens[index].value = Some(aux);
+    //                 tokens[index].ttype = TokenType::ComparisonOperator;
+
+    //                 tokens.remove(index + 1);
+    //             }
+    //         }
+    //     }
+    // }
+
     pub fn fix_comparison_operators(tokens: &mut Vec<Token>) {
-        for index in 0..tokens.len() - 1 {
+        let mut index = 0;
+        while index + 1 < tokens.len() {
             if tokens[index].ttype == TokenType::AssignmentOperator {
-                if index + 1 < tokens.len()
-                    && (tokens[index + 1].ttype == TokenType::ComparisonOperator
-                        || tokens[index + 1].ttype == TokenType::AssignmentOperator)
+                if tokens[index + 1].ttype == TokenType::ComparisonOperator
+                    || tokens[index + 1].ttype == TokenType::NegationOperator
+                    || tokens[index + 1].ttype == TokenType::AssignmentOperator
                 {
-                    let mut aux: String = String::new();
+                    let mut aux = String::new();
 
                     if let Some(val) = tokens[index].value.as_ref() {
                         aux.push_str(val);
@@ -111,8 +141,11 @@ impl<'a> Tokenizer<'a> {
                     tokens[index].ttype = TokenType::ComparisonOperator;
 
                     tokens.remove(index + 1);
+                    // Don't increment index, since the next token has shifted into the current + 1 position
+                    continue;
                 }
             }
+            index += 1;
         }
     }
 }
